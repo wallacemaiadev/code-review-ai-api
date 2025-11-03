@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch Linux",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/NDE.Api/bin/Debug/net9.0/NDE.Api.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/NDE.Api/bin/Debug/net9.0",
+      "stopAtEntry": false,
+      "console": "internalConsole",
+      "env": {
+        "DOTNET_ROOT": "$HOME/.asdf/installs/dotnet/9.0.304/sdk",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "https://localhost:7220;http://localhost:5007"
+      }
+    }
+  ]
+}

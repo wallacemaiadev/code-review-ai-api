@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}/src/NDE.Api/NDE.Api.csproj", "/property:GenerateFullPaths=true", "/consoleloggerparameters:NoSummary"],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["format"],
+      "group": "none",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "migrate-db",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-c", "dotnet ef migrations add migrantion_$(date +'%Y%m%d%H%M%S') --project ${workspaceFolder}/src/NDE.Data --startup-project ${workspaceFolder}/src/NDE.Api/NDE.Api.csproj"],
+      "presentation": {
+        "reveal": "always",
+
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

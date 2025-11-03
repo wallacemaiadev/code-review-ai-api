@@ -1,0 +1,17 @@
+[*.cs]
+indent_style = space
+indent_size = 2
+tab_width = 2
+
+csharp_preserve_single_line_statements = true
+csharp_preserve_single_line_blocks = true
+
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = true
+
+csharp_new_line_between_methods = true
+csharp_new_line_between_properties = false
+csharp_preserve_single_line_properties = true
+
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_remove_unnecessary_imports = true
