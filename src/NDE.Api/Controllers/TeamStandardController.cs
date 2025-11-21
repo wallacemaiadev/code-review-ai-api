@@ -40,7 +40,7 @@ public class TeamStandardController : MainController
 
   [MapToApiVersion(1)]
   [HttpPost("save/{repositoryId:guid}")]
-  public async Task<IActionResult> CreateTeamStandard([FromRoute] Guid repositoryId, [FromBody] object teamStandard)
+  public async Task<IActionResult> CreateTeamStandard([FromRoute] Guid repositoryId, [FromBody] string teamStandard)
   {
     return NDEResponse(await _teamStandardService.SaveTeamStandardAsync(teamStandard: teamStandard, repositoryId: repositoryId));
   }

@@ -7,30 +7,26 @@ namespace NDE.Domain.Entities.CodeReviews;
 
 public class CodeReview : Entity<Guid>
 {
-  public int PullRequestId { get; private set; }
-  public AzurePullRequest AzurePullRequest { get; private set; } = default!;
+  public Guid PullRequestId { get; private set; }
   public string FilePath { get; private set; } = string.Empty;
+  public string FileLink { get; private set; } = string.Empty;
   public string Diff { get; private set; } = string.Empty;
   public string Language { get; private set; } = string.Empty;
-  public string Fingerprint { get; private set; } = string.Empty;
   public string DiffHash { get; private set; } = string.Empty;
-  public int VerdictId { get; private set; } = Verdict.Pending.Id;
+  public int VerdictId { get; private set; }
   public string Suggestion { get; private set; } = string.Empty;
   public int TokensConsumed { get; private set; }
-  public float[] Vector { get; private set; } = Array.Empty<float>();
-  public string SummaryReview { get; private set; } = string.Empty;
   public string Feedback { get; private set; } = string.Empty;
   public bool Closed { get; private set; }
   public DateTime CreatedAt { get; private set; }
   public DateTime UpdatedAt { get; private set; }
 
+  public PullRequest PullRequest { get; private set; } = default!;
+  public List<Modification> Modifications { get; set; } = new();
+
   protected CodeReview() : base(Guid.Empty) { }
 
-  public CodeReview(
-      int pullRequestId,
-      string filePath,
-      string diff
-  ) : base(Guid.NewGuid())
+  public CodeReview(Guid pullRequestId, string filePath, string diff, string language) : base(Guid.NewGuid())
   {
     PullRequestId = pullRequestId;
     FilePath = filePath;
@@ -39,116 +35,159 @@ public class CodeReview : Entity<Guid>
     Closed = false;
     CreatedAt = DateTime.UtcNow;
     UpdatedAt = DateTime.UtcNow;
-    UpdateDiff(diff);
+    SetDiff(diff);
   }
 
-  public bool UpdateDiff(string newDiff)
+  public bool SetDiff(string diff)
   {
-    var normalized = NormalizeText(newDiff);
-    var newHash = ComputeSha512Hex(normalized);
+    if (string.IsNullOrWhiteSpace(diff))
+      throw new ArgumentNullException("Diff não pode ser nulo ou vazio.", nameof(diff));
 
-    if (!string.IsNullOrEmpty(DiffHash) && string.Equals(DiffHash, newHash, StringComparison.OrdinalIgnoreCase))
+    var hash = GenerateHash(diff);
+
+    if (!CompareDiff(hash))
       return false;
 
-    Diff = normalized;
-    DiffHash = newHash;
-    Fingerprint = ComputeFingerprint();
+    Diff = NormalizeDiff(diff);
+    DiffHash = hash;
     Updated();
+
     return true;
   }
 
-  public void SetDiffHash(string hash)
+  public void AddModifications(Modification code)
   {
-    if (string.IsNullOrWhiteSpace(hash))
-      return;
+    if (code == null)
+      throw new ArgumentNullException("A modificação não pode ser nulo.", nameof(code));
 
-    DiffHash = hash;
-    Updated();
+    Modifications ??= new List<Modification>();
+    Modifications.Add(code);
   }
 
-  public void SetVector(float[]? vector)
+  public bool SetFeedback(string feedback)
   {
-    Vector = vector ?? Array.Empty<float>();
-    Updated();
+    if (string.IsNullOrWhiteSpace(feedback))
+      throw new ArgumentNullException("Feedback não pode ser nulo ou vazio.", nameof(feedback));
+
+    if (Feedback != feedback)
+    {
+      Feedback = feedback ?? string.Empty;
+      Updated();
+      return true;
+    }
+
+    return false;
   }
 
-  public void SetFeedback(string feedback)
+  public bool SetVerdict(Verdict verdict)
   {
-    Feedback = feedback ?? string.Empty;
-    Updated();
+    if (verdict == null)
+      throw new ArgumentNullException("O veredito não pode ser nulo ou vazio.", nameof(verdict));
+
+    if (VerdictId != verdict.Id)
+    {
+      VerdictId = verdict.Id;
+      Updated();
+      return true;
+    }
+
+    return false;
   }
 
-  public void SetVerdict(int verdictId)
+  public bool SetSuggestion(string suggestion, int tokens)
   {
-    VerdictId = verdictId;
-    Updated();
-  }
+    if (string.IsNullOrWhiteSpace(suggestion))
+      throw new ArgumentNullException("A sugestão não pode ser nulo ou vazio.", nameof(suggestion));
 
-  public void SetSuggestion(string? suggestion)
-  {
-    Suggestion = suggestion ?? string.Empty;
-    Updated();
-  }
-
-  public void SetLanguage(string? language)
-  {
-    Language = language ?? string.Empty;
-    Updated();
-  }
-
-  public void SetTokens(int tokens)
-  {
     if (tokens < 0)
       tokens = 0;
 
-    TokensConsumed = tokens;
-    Updated();
+    if (Suggestion != suggestion)
+    {
+      TokensConsumed = tokens;
+      Suggestion = suggestion;
+
+      Updated();
+      return true;
+    }
+
+    return false;
   }
 
-  public void SetSummaryReview(string summaryReview)
+  public bool SetFileLink(int pullRequestId, string repositoryUrl, string filePath)
   {
-    SummaryReview = summaryReview ?? string.Empty;
-    Updated();
-  }
+    if (pullRequestId <= 0)
+      throw new ArgumentNullException("O Id do Pull Request está inválido.", nameof(pullRequestId));
 
-  public void Updated() => UpdatedAt = DateTime.UtcNow;
+    if (string.IsNullOrEmpty(repositoryUrl))
+      throw new ArgumentNullException("A URL do repositório não pode ser nulo ou vazio.", nameof(repositoryUrl));
+
+    if (string.IsNullOrEmpty(filePath))
+      throw new ArgumentNullException("O caminho do arquivo não pode ser nulo ou vazio.", nameof(repositoryUrl));
+
+    var fileLink = $"{repositoryUrl}/pullrequest/{pullRequestId}?_a=files&path=/{filePath}";
+
+    if (FileLink != fileLink)
+    {
+      FileLink = fileLink;
+      Updated();
+      return true;
+    }
+
+    return false;
+  }
 
   public void SetClosed(bool closed = true)
   {
-    Closed = closed;
-    Updated();
+    if (Closed != closed)
+    {
+      Closed = closed;
+      Updated();
+    }
   }
 
-  private string ComputeFingerprint()
+  public string GenerateHash(string diff)
   {
-    var sb = new StringBuilder(256)
-        .Append(Id).Append('|')
-        .Append(PullRequestId).Append('|')
-        .Append(NormalizePath(FilePath)).Append('|')
-        .Append(Diff);
+    if (string.IsNullOrWhiteSpace(diff))
+      throw new ArgumentNullException("Diff não pode ser nulo ou vazio.", nameof(diff));
 
-    return ComputeSha256Hex(sb.ToString());
+    var normalized = NormalizeDiff(diff);
+    var hash = ComputeSha512Hex(normalized);
+
+    return hash;
   }
 
-  private static string ComputeSha256Hex(string input)
+  public bool CompareDiff(string diff)
   {
-    var bytes = Encoding.UTF8.GetBytes(input);
-    var hash = SHA256.HashData(bytes);
-    return Convert.ToHexString(hash).ToLowerInvariant();
+    if (string.IsNullOrWhiteSpace(diff))
+      throw new ArgumentNullException("Diff não pode ser nulo ou vazio.", nameof(diff));
+
+    if (string.IsNullOrWhiteSpace(DiffHash))
+      return true;
+
+    var normalized = NormalizeDiff(diff);
+    var newHash = ComputeSha512Hex(normalized);
+
+    return !string.Equals(DiffHash, newHash, StringComparison.OrdinalIgnoreCase);
   }
 
-  private static string ComputeSha512Hex(string input)
+  public string NormalizeDiff(string diff)
   {
-    var bytes = Encoding.UTF8.GetBytes(input);
+    if (string.IsNullOrWhiteSpace(diff))
+      throw new ArgumentNullException("Diff não pode ser nulo ou vazio.", nameof(diff));
+
+    return diff.Replace("\r\n", "\n").Replace("\r", "\n").Trim();
+  }
+
+  public string ComputeSha512Hex(string diff)
+  {
+    if (string.IsNullOrWhiteSpace(diff))
+      throw new ArgumentNullException("Diff não pode ser nulo ou vazio.", nameof(diff));
+
+    var bytes = Encoding.UTF8.GetBytes(diff);
     var hash = SHA512.HashData(bytes);
     return Convert.ToHexString(hash).ToLowerInvariant();
   }
 
-  private static string NormalizeText(string? text)
-      => string.IsNullOrEmpty(text) ? string.Empty
-         : text.Replace("\r\n", "\n").Replace("\r", "\n").Trim();
-
-  private static string NormalizePath(string? path)
-      => string.IsNullOrEmpty(path) ? string.Empty
-         : path.Replace('\\', '/').ToLowerInvariant().Trim();
+  public void Updated() => UpdatedAt = DateTime.UtcNow;
 }

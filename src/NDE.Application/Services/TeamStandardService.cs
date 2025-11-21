@@ -11,25 +11,25 @@ namespace NDE.Application.Services;
 
 public class TeamStandardService : BaseService, ITeamStandardService
 {
-  private readonly IAzureRepositoryRepository _azureRepositoryRepository;
-  private readonly IAzureProjectRepository _azureProjectRepository;
+  private readonly IRepositoryRepository _repositoryRepository;
+  private readonly IProjectRepository _ProjectRepository;
   private readonly IDistributedCache _cache;
   private readonly ILogger<TeamStandardService> _logger;
 
   public TeamStandardService(
     IDistributedCache cache,
-    IAzureRepositoryRepository azureRepositoryRepository,
-    IAzureProjectRepository azureProjectRepository,
+    IRepositoryRepository RepositoryRepository,
+    IProjectRepository ProjectRepository,
     ILogger<TeamStandardService> logger,
     INotificator notificator) : base(notificator)
   {
-    _azureRepositoryRepository = azureRepositoryRepository;
-    _azureProjectRepository = azureProjectRepository;
+    _repositoryRepository = RepositoryRepository;
+    _ProjectRepository = ProjectRepository;
     _cache = cache;
     _logger = logger;
   }
 
-  public async Task<bool> SaveTeamStandardAsync(object teamStandard, Guid repositoryId)
+  public async Task<bool> SaveTeamStandardAsync(string teamStandard, Guid repositoryId)
   {
     if (teamStandard is null)
     {
@@ -37,8 +37,8 @@ public class TeamStandardService : BaseService, ITeamStandardService
       return false;
     }
 
-    var repos = await _azureRepositoryRepository.GetRepositoryByIdAsync(
-      repositoryId: repositoryId);
+    var repos = await _repositoryRepository.GetById(
+      id: repositoryId);
 
     if (repos is null)
     {
@@ -46,8 +46,8 @@ public class TeamStandardService : BaseService, ITeamStandardService
       return false;
     }
 
-    var project = await _azureProjectRepository.GetProjectByIdAsync(
-      projectId: repos.ProjectId);
+    var project = await _ProjectRepository.GetById(
+      id: repos.ProjectId);
 
     if (project is null)
     {
@@ -55,7 +55,7 @@ public class TeamStandardService : BaseService, ITeamStandardService
       return false;
     }
 
-    var cacheKey = $"TeamStandard:{repos.Id}";
+    var cacheKey = $"TeamStandard:{repos.Id}:{project.Id}";
 
     var options = new DistributedCacheEntryOptions()
                 .SetAbsoluteExpiration(TimeSpan.FromDays(10))
@@ -63,37 +63,37 @@ public class TeamStandardService : BaseService, ITeamStandardService
 
     await _cache.SetAsync(cacheKey, teamStandard, options);
 
-    AppMetrics.RecordTeamStandardCreated(
+    AppMetrics.ObserveTeamStandardCreated(
       repositoryId: repos.Id,
-      repositoryName: repos.RepositoryName,
-      projectName: project.ProjectName);
+      repositoryName: repos.Name,
+      projectName: project.Name);
 
     return true;
   }
 
-  public async Task<object?> GetTeamStandardAsync(Guid repositoryId)
+  public async Task<string?> GetTeamStandardAsync(Guid repositoryId)
   {
-    var repos = await _azureRepositoryRepository.GetRepositoryByIdAsync(
-      repositoryId: repositoryId);
+    var repos = await _repositoryRepository.GetById(
+      id: repositoryId);
 
     if (repos is null)
     {
       Notify("Repositório não encontrado.");
-      return false;
+      return null;
     }
 
-    var project = await _azureProjectRepository.GetProjectByIdAsync(
-      projectId: repos.ProjectId);
+    var project = await _ProjectRepository.GetById(
+      id: repos.ProjectId);
 
     if (project is null)
     {
       Notify("Projeto não encontrado.");
-      return false;
+      return null;
     }
 
-    var cacheKey = $"TeamStandard:{repos.Id}";
+    var cacheKey = $"TeamStandard:{repos.Id}:{project.Id}";
 
-    if (!_cache.TryGetValue(cacheKey, out object? teamStandard))
+    if (!_cache.TryGetValue(cacheKey, out string? teamStandard))
       return null;
 
     return teamStandard;

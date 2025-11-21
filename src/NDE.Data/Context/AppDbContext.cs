@@ -13,9 +13,9 @@ public class AppDbContext : DbContext
     ChangeTracker.AutoDetectChangesEnabled = false;
   }
 
-  public DbSet<AzureProject> AzureProjects { get; set; } = default!;
-  public DbSet<AzureRepository> AzureRepositories { get; set; } = default!;
-  public DbSet<AzurePullRequest> PullRequests { get; set; } = default!;
+  public DbSet<Project> Projects { get; set; } = default!;
+  public DbSet<Repository> Repositories { get; set; } = default!;
+  public DbSet<PullRequest> PullRequests { get; set; } = default!;
   public DbSet<CodeReview> CodeReviews { get; set; } = default!;
 
   protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -25,10 +25,11 @@ public class AppDbContext : DbContext
             .Where(p => p.ClrType == typeof(string))))
       property.SetColumnType("varchar(100)");
 
-    modelBuilder.ApplyConfiguration(new AzureProjectConfiguration());
-    modelBuilder.ApplyConfiguration(new AzureRepositoryConfiguration());
-    modelBuilder.ApplyConfiguration(new AzurePullRequestConfiguration());
+    modelBuilder.ApplyConfiguration(new ProjectConfiguration());
+    modelBuilder.ApplyConfiguration(new RepositoryConfiguration());
+    modelBuilder.ApplyConfiguration(new PullRequestConfiguration());
     modelBuilder.ApplyConfiguration(new CodeReviewConfiguration());
+    modelBuilder.ApplyConfiguration(new CodeModificationConfiguration());
 
     base.OnModelCreating(modelBuilder);
   }

@@ -23,12 +23,15 @@ var app = builder.Build();
 
 await app.ApplyMigrationsAsync();
 
+app.UseCors("AllowAll");
+
 if (app.Environment.IsDevelopment())
 {
   app.MapOpenApi();
 }
 
-app.UseApiKeyAuth();
+app.UseMiddleware<AuthMiddleware>();
+app.UseMiddleware<TokenValidationMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 

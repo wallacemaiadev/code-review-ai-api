@@ -1,16 +1,16 @@
 using System.ClientModel;
+using System.Diagnostics;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NDE.Application.Interfaces;
 using NDE.Domain.Utils;
+using NDE.Observability.Metrics;
 using NDE.VectorStore.Options;
 
 using OpenAI;
 using OpenAI.Embeddings;
-
-using SharpToken;
 
 namespace NDE.Application.Services;
 
@@ -21,25 +21,28 @@ public class EmbeddingService : IEmbeddingService
   private readonly EmbeddingClient _embeddingClient;
   private readonly VectorStoreOptions _vectorStore;
   private readonly int EmbeddingDim;
+
   public EmbeddingService(IOptions<AppSettings> settings, IOptions<VectorStoreOptions> vectorStore, ILogger<EmbeddingService> logger)
   {
     _settings = settings.Value;
     _logger = logger;
     _embeddingClient = new EmbeddingClient(
-      model: _settings.OpenAI.ModelName,
-      credential: new ApiKeyCredential(_settings.OpenAI.ApiKey),
+      model: _settings.EmbeddingService.ModelName,
+      credential: new ApiKeyCredential(_settings.EmbeddingService.ApiKey),
       options: new OpenAIClientOptions
       {
-        Endpoint = new Uri(_settings.OpenAI.Endpoint)
+        Endpoint = new Uri(_settings.EmbeddingService.Endpoint)
       });
     _vectorStore = vectorStore.Value;
     EmbeddingDim = _vectorStore.Dimensions;
   }
 
-  public async Task<float[]> GenerateEmbedding(string text, CancellationToken ct = default)
+  public async Task<float[]?> GenerateEmbedding(string text, CancellationToken ct = default)
   {
     if (string.IsNullOrWhiteSpace(text))
       throw new ArgumentException("O texto para geração do embedding não pode ser nulo ou vazio.", nameof(text));
+
+    var watch = Stopwatch.StartNew();
 
     _logger.LogInformation("Gerando embedding do texto com {Length} caracteres.", text.Length);
 
@@ -53,9 +56,6 @@ public class EmbeddingService : IEmbeddingService
         },
         cancellationToken: ct);
 
-      var model = "text-embedding-3-small";
-      var tokens = CountEmbeddingTokens(text, model);
-
       var vector = embedding.Value.ToFloats().ToArray();
       var dim = vector.Length;
 
@@ -68,18 +68,15 @@ public class EmbeddingService : IEmbeddingService
         throw new InvalidOperationException(msg);
       }
 
+      watch.Stop();
+      AppMetrics.ObserveGenerateEmbeddingDuration(watch.Elapsed);
+
       return vector;
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Falha ao gerar embedding.");
-      throw;
+      _logger.LogError(ex, "Falha ao gerar embedding");
+      return null;
     }
-  }
-
-  public int CountEmbeddingTokens(string text, string model = "text-embedding-3-small")
-  {
-    var encoding = GptEncoding.GetEncodingForModel(model);
-    return encoding.Encode(text).Count;
   }
 }

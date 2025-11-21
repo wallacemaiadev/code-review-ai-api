@@ -22,72 +22,6 @@ namespace NDE.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzureProject", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ProjectName")
-                        .IsRequired()
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<string>("ProjectUrl")
-                        .IsRequired()
-                        .HasColumnType("varchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Projects", (string)null);
-                });
-
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzurePullRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("CreatedAt");
-
-                    b.Property<Guid>("RepositoryId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RepositoryId", "Id")
-                        .IsUnique();
-
-                    b.ToTable("PullRequests", (string)null);
-                });
-
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzureRepository", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ProjectId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("RepositoryName")
-                        .IsRequired()
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<string>("RepositoryUrl")
-                        .IsRequired()
-                        .HasColumnType("varchar(500)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("Repositories", (string)null);
-                });
-
             modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.CodeReview", b =>
                 {
                     b.Property<Guid>("Id")
@@ -114,26 +48,22 @@ namespace NDE.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("FileLink")
+                        .IsRequired()
+                        .HasColumnType("varchar(500)");
+
                     b.Property<string>("FilePath")
                         .IsRequired()
                         .HasColumnType("varchar(500)");
 
-                    b.Property<string>("Fingerprint")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("Language")
                         .IsRequired()
-                        .HasColumnType("varchar(100)");
+                        .HasColumnType("varchar(50)");
 
-                    b.Property<int>("PullRequestId")
-                        .HasColumnType("integer");
+                    b.Property<Guid>("PullRequestId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Suggestion")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("SummaryReview")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -145,9 +75,6 @@ namespace NDE.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("now()");
 
-                    b.Property<string>("Vector")
-                        .HasColumnType("text");
-
                     b.Property<int>("VerdictId")
                         .HasColumnType("integer");
 
@@ -158,50 +85,180 @@ namespace NDE.Data.Migrations
                     b.ToTable("CodeReviews", (string)null);
                 });
 
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzurePullRequest", b =>
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.Modification", b =>
                 {
-                    b.HasOne("NDE.Domain.Entities.CodeReviews.AzureRepository", "AzureRepository")
-                        .WithMany("PullRequests")
-                        .HasForeignKey("RepositoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
 
-                    b.Navigation("AzureRepository");
+                    b.Property<string>("CodeBlock")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CodeReviewId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Vector")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeReviewId");
+
+                    b.ToTable("CodeModifications", (string)null);
                 });
 
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzureRepository", b =>
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.Project", b =>
                 {
-                    b.HasOne("NDE.Domain.Entities.CodeReviews.AzureProject", "AzureProject")
-                        .WithMany("Repositories")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
 
-                    b.Navigation("AzureProject");
+                    b.Property<string>("CollectionUrl")
+                        .IsRequired()
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Projects", (string)null);
+                });
+
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.PullRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PullRequestId")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RepositoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<int>("TokensConsumed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RepositoryId", "PullRequestId")
+                        .IsUnique();
+
+                    b.ToTable("PullRequests", (string)null);
+                });
+
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.Repository", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("varchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("Repositories", (string)null);
                 });
 
             modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.CodeReview", b =>
                 {
-                    b.HasOne("NDE.Domain.Entities.CodeReviews.AzurePullRequest", "AzurePullRequest")
+                    b.HasOne("NDE.Domain.Entities.CodeReviews.PullRequest", "PullRequest")
                         .WithMany("CodeReviews")
                         .HasForeignKey("PullRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("AzurePullRequest");
+                    b.Navigation("PullRequest");
                 });
 
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzureProject", b =>
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.Modification", b =>
+                {
+                    b.HasOne("NDE.Domain.Entities.CodeReviews.CodeReview", "CodeReview")
+                        .WithMany("Modifications")
+                        .HasForeignKey("CodeReviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CodeReview");
+                });
+
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.PullRequest", b =>
+                {
+                    b.HasOne("NDE.Domain.Entities.CodeReviews.Repository", "Repository")
+                        .WithMany("PullRequests")
+                        .HasForeignKey("RepositoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Repository");
+                });
+
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.Repository", b =>
+                {
+                    b.HasOne("NDE.Domain.Entities.CodeReviews.Project", "Project")
+                        .WithMany("Repositories")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.CodeReview", b =>
+                {
+                    b.Navigation("Modifications");
+                });
+
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.Project", b =>
                 {
                     b.Navigation("Repositories");
                 });
 
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzurePullRequest", b =>
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.PullRequest", b =>
                 {
                     b.Navigation("CodeReviews");
                 });
 
-            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.AzureRepository", b =>
+            modelBuilder.Entity("NDE.Domain.Entities.CodeReviews.Repository", b =>
                 {
                     b.Navigation("PullRequests");
                 });

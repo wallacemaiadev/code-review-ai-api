@@ -6,111 +6,93 @@ namespace NDE.Observability.Metrics
   {
     private static Meter? _meter;
 
-    private static Counter<int>? _projectCreatedCounter;
-    private static Counter<int>? _repositoryCreatedCounter;
-    private static Counter<int>? _teamStandardCreatedCounter;
     private static Counter<int>? _pullRequestCreatedCounter;
     private static Counter<int>? _pullRequestUpdatedCounter;
-    private static Counter<int>? _pullRequestClosedCounter;
-    private static Histogram<double>? _getSimilarDiffDuration;
+
+
+    private static Counter<int>? _projectCreatedCounter;
+
+    private static Counter<int>? _repositoryCreatedCounter;
+
+    private static Counter<int>? _teamStandardCreatedCounter;
+
+
     private static Counter<int>? _similarFoundCounter;
-    private static Counter<int>? _codeReviewVectorCreatedDiffCounter;
-    private static Counter<int>? _codeReviewVectorUpdatedDiffCounter;
+
     private static Counter<int>? _buildPipelineCounter;
+
+
+    private static Histogram<double>? _generateEmbeddingDuration;
+    private static Histogram<double>? _llmRequestDuration;
 
     public static void Init(string name, string version)
     {
       _meter = new Meter(name, version);
 
       _projectCreatedCounter = _meter.CreateCounter<int>(
-        "nde_project_created_total",
-        description: "Total de projetos criados.");
+        "project_created_total",
+        description: "Total de projetos registrados no sistema.");
 
       _repositoryCreatedCounter = _meter.CreateCounter<int>(
-          "nde_repository_created_total",
-          description: "Total de repositórios criados.");
+        "repository_created_total",
+        description: "Total de repositórios registrados no sistema.");
 
       _teamStandardCreatedCounter = _meter.CreateCounter<int>(
-          "nde_teamstandard_created_total",
-          description: "Total de Team Standards (padrões de projeto da equipe) criados.");
+        "teamstandard_created_total",
+        description: "Total de Team Standards criados.");
 
       _pullRequestCreatedCounter = _meter.CreateCounter<int>(
-        "nde_pullrequest_created_total",
+        "pullrequest_created_total",
         description: "Total de Pull Requests criados.");
 
       _pullRequestUpdatedCounter = _meter.CreateCounter<int>(
-        "nde_pullrequest_updated_total",
+        "pullrequest_updated_total",
         description: "Total de Pull Requests atualizados.");
 
-      _pullRequestClosedCounter = _meter.CreateCounter<int>(
-        "nde_pullrequest_closed_total",
-        description: "Total de Pull Requests fechados.");
-
-      _getSimilarDiffDuration = _meter.CreateHistogram<double>(
-        "nde_get_similar_diff_duration_seconds",
+      _generateEmbeddingDuration = _meter.CreateHistogram<double>(
+        "generate_embedding_duration_seconds",
         unit: "s",
-        description: "Duração (em segundos) da operação de busca de diffs similares.");
+        description: "Duração (em segundos) para gerar embeddings a partir do diff.");
+
+      _llmRequestDuration = _meter.CreateHistogram<double>(
+        "llm_request_duration_seconds",
+        unit: "s",
+        description: "Duração (em segundos) da requisição ao modelo LLM durante a análise de diffs.");
 
       _similarFoundCounter = _meter.CreateCounter<int>(
-        "nde_get_similar_found_total",
-        description: "Total de diffs similares encontrados.");
-
-      _codeReviewVectorCreatedDiffCounter = _meter.CreateCounter<int>(
-        "nde_codereview_created_total",
-        description: "Total de vetores de code reviews criados.");
-
-      _codeReviewVectorUpdatedDiffCounter = _meter.CreateCounter<int>(
-      "nde_codereview_updated_total",
-      description: "Total de vetores de code reviews atualizados.");
+        "get_similar_found_total",
+        description: "Total de diffs similares encontrados pelo sistema.");
 
       _buildPipelineCounter = _meter.CreateCounter<int>(
-        "nde_build_pipeline_total",
-        description: "Total de builds de pipeline registrados.");
+        "build_pipeline_total",
+        description: "Total de execuções de pipeline registradas.");
     }
 
-    public static void RecordPullRequestCreated(int pullRequestId, string title, string projectName, string repositoryName)
+    public static void ObservePullRequestCreated(int pullRequestId, Guid repositoryId, Guid projectId, string repositoryName)
     {
       _pullRequestCreatedCounter?.Add(1,
       [
         new("pullrequest_id", pullRequestId),
-        new("pullrequest_title", title),
-        new("project_name", projectName),
         new("repository_name", repositoryName),
+        new("project_id", projectId),
+        new("repository_id", repositoryId),
       ]);
     }
 
-    public static void RecordPullRequestUpdated(int pullRequestId, string title, string projectName, string repositoryName)
+    public static void ObservePullRequestUpdated(int pullRequestId, string title, string projectName, string repositoryName, Guid projectId, Guid repositoryId)
     {
       _pullRequestUpdatedCounter?.Add(1,
       [
         new("pullrequest_id", pullRequestId),
         new("pullrequest_title", title),
+        new("project_id", projectId),
+        new("repository_id", repositoryId),
         new("project_name", projectName),
         new("repository_name", repositoryName)
       ]);
     }
 
-    public static void RecordPullRequestClosed(int pullRequestId, string title, string projectName, string repositoryName)
-    {
-      _pullRequestClosedCounter?.Add(1,
-      [
-        new("pullrequest_id", pullRequestId),
-        new("pullrequest_title", title),
-        new("project_name", projectName),
-        new("repository_name", repositoryName)
-      ]);
-    }
-
-    public static void RecordGetSimilarDiffDuration(TimeSpan duration, string projectName, string repositoryName)
-    {
-      _getSimilarDiffDuration?.Record(duration.TotalSeconds,
-      [
-        new("project_name", projectName),
-        new("repository_name", repositoryName)
-      ]);
-    }
-
-    public static void RecordSimilarFound(int pullRequestId, string projectName, string repositoryName, List<string> payloads, int quantity)
+    public static void ObserveSimilarFound(int pullRequestId, string projectName, string repositoryName, List<string> payloads, int quantity)
     {
       _similarFoundCounter?.Add(quantity,
       [
@@ -121,7 +103,7 @@ namespace NDE.Observability.Metrics
       ]);
     }
 
-    public static void RecordProjectCreated(Guid projectId, string projectName)
+    public static void ObserveProjectCreated(Guid projectId, string projectName)
     {
       _projectCreatedCounter?.Add(1,
       [
@@ -130,7 +112,7 @@ namespace NDE.Observability.Metrics
       ]);
     }
 
-    public static void RecordRepositoryCreated(Guid repositoryId, string repositoryName, string projectName)
+    public static void ObserveRepositoryCreated(Guid repositoryId, string repositoryName, string projectName)
     {
       _repositoryCreatedCounter?.Add(1,
       [
@@ -140,7 +122,7 @@ namespace NDE.Observability.Metrics
       ]);
     }
 
-    public static void RecordTeamStandardCreated(Guid repositoryId, string repositoryName, string projectName)
+    public static void ObserveTeamStandardCreated(Guid repositoryId, string repositoryName, string projectName)
     {
       _teamStandardCreatedCounter?.Add(1,
       [
@@ -150,29 +132,18 @@ namespace NDE.Observability.Metrics
       ]);
     }
 
-    public static void RecordCodeReviewVectorCreated(int pullRequestId, string repositoryName, string projectName, string verdict)
+    public static void ObserveGenerateEmbeddingDuration(TimeSpan duration)
     {
-      _codeReviewVectorCreatedDiffCounter?.Add(1,
-      [
-        new("pullrequest_id", pullRequestId),
-        new("repository_name", repositoryName),
-        new("project_name", projectName),
-        new("verdict", verdict)
-      ]);
+      _generateEmbeddingDuration?.Record(duration.TotalSeconds);
     }
 
-    public static void RecordCodeReviewVectorUpdated(int pullRequestId, string repositoryName, string projectName, string verdict)
+    public static void ObserveLlmRequestDuration(TimeSpan duration)
     {
-      _codeReviewVectorUpdatedDiffCounter?.Add(1,
-      [
-        new("pullrequest_id", pullRequestId),
-        new("repository_name", repositoryName),
-        new("project_name", projectName),
-        new("verdict", verdict)
-      ]);
+      _llmRequestDuration?.Record(duration.TotalSeconds);
     }
 
-    public static void RecordBuildPipeline(
+
+    public static void ObserveBuildPipeline(
       int buildId,
       string buildNumber,
       DateTime queueTime,

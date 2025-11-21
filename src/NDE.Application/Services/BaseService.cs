@@ -36,6 +36,7 @@ public class BaseService
 
     return true;
   }
+
   protected bool Validate<TE>(AbstractValidator<TE> validator, TE entity)
   {
     var result = validator.Validate(entity);

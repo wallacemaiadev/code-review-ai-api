@@ -1,18 +1,33 @@
-using AutoMapper;
+using Mapster;
 
 using NDE.Application.ViewModels.Request.CodeReviews;
+using NDE.Application.ViewModels.Response.CodeReviews;
 using NDE.Domain.Entities.CodeReviews;
 
 namespace NDE.Application.AutoMapper;
 
-public class CodeReviewProfile : Profile
+public class MappingRegistration : IRegister
 {
-  public CodeReviewProfile()
+  public void Register(TypeAdapterConfig config)
   {
-    CreateMap<ProjectRequestViewModel, AzureProject>()
-      .ConstructUsing(src => new AzureProject(src.ProjectId, src.ProjectName, src.ProjectUrl));
+    config.NewConfig<ProjectRequestViewModel, Project>()
+      .ConstructUsing(src => new Project(
+        src.Id,
+        src.Name,
+        src.Description,
+        src.Url,
+        src.CollectionUrl));
 
-    CreateMap<RepositoryRequestViewModel, AzureRepository>()
-      .ConstructUsing(src => new AzureRepository(src.RepositoryId, src.ProjectId, src.RepositoryName, src.RepositoryUrl));
+    config.NewConfig<RepositoryRequestViewModel, Repository>()
+      .ConstructUsing(src => new Repository(
+        src.Id,
+        src.ProjectId,
+        src.Name,
+        src.Description,
+        src.Url));
+
+    config.NewConfig<CodeReview, CodeReviewResponseViewModel>();
+
+    config.NewConfig<Modification, ModificationResponseViewModel>();
   }
 }
